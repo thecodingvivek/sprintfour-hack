@@ -56,8 +56,8 @@ gcloud run deploy adk-agent-api \
   --source . \
   --allow-unauthenticated \
   --region=us-central1 \
-  --project=fourhack-5f384 \
-  --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=1,GOOGLE_CLOUD_PROJECT=fourhack-5f384,GOOGLE_CLOUD_LOCATION=us-central1"
+  --project=f \
+  --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=1,GOOGLE_CLOUD_PROJECT=,GOOGLE_CLOUD_LOCATION=us-central1"
 ```
 
 ---
@@ -65,7 +65,7 @@ gcloud run deploy adk-agent-api \
 ## Local Development
 
 ### 1. Prerequisites
-Ensure you have the service account credentials JSON file (`fourhack-5f384-136980915a0a.json`) placed in the root directory.
+Ensure you have the service account credentials JSON file
 
 ### 2. Install Dependencies
 ```bash
