@@ -1,4 +1,15 @@
 # Conseal – Explainable AI Document Anonymization
+![Conseal Banner](static/hero.png)
+
+<p align="left">
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" /></a>
+  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" /></a>
+  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
+  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="https://www.python.org"><img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" /></a>
+  <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/Gemini-8E75C2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Gemini" /></a>
+</p>
 
 ## Overview
 
@@ -91,6 +102,8 @@ This ensures the AI keeps information that is useful while removing information 
 
 ## 1. Purpose Selection
 
+![Purpose](static/policy.png)
+
 Before any analysis begins, the user specifies why the document will be shared with an AI.
 
 Examples:
@@ -106,6 +119,7 @@ This allows the system to make context-aware privacy decisions instead of blindl
 ---
 
 ## 2. Policy Generation Agent
+![Purposeagent](static/policyagent.png)
 
 An ADK agent generates a privacy strategy based on the selected purpose.
 
@@ -146,6 +160,7 @@ Responsibilities include:
 ---
 
 ## 5. Interactive PDF Review
+![pdfreview](static/pdf.png)
 
 Instead of displaying extracted text, the application renders the original PDF.
 
@@ -167,6 +182,7 @@ After the review is complete, the backend applies permanent redactions to the or
 ---
 
 ## 7. Optional Privacy Audit
+![llmasjudge](static/llmasjudge.png)
 
 For users who want additional assurance, Conseal provides an optional Privacy Audit.
 
