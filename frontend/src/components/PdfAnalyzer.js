@@ -310,6 +310,8 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
       '.react-pdf__Page__textContent span[role="presentation"]'
     )
 
+    const anonymizedEntityIndexes = new Set()
+
     spans.forEach((span) => {
       if (span.dataset.originalText) {
         span.textContent = span.dataset.originalText
@@ -319,6 +321,17 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
       span.style.borderRadius = ''
       span.style.border = ''
       span.style.fontFamily = ''
+      span.style.display = ''
+      span.style.minWidth = ''
+      span.style.minHeight = ''
+      span.style.padding = ''
+      span.style.userSelect = ''
+      span.style.boxShadow = ''
+    })
+
+    const annotationLayers = previewRef.current.querySelectorAll('.react-pdf__Page__annotations')
+    annotationLayers.forEach(layer => {
+      layer.style.pointerEvents = 'none'
     })
 
     spans.forEach((span) => {
@@ -343,18 +356,25 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
 
       const decision = reviewState[entityIndex]?.decision || 'redact'
       if (decision === 'redact') {
+        span.style.setProperty('color', 'transparent', 'important')
         span.style.background = '#2F3437'
-        span.style.color = '#2F3437'
         span.style.borderRadius = '2px'
+        span.style.display = 'inline-block'
+        span.style.userSelect = 'none'
+        span.style.boxShadow = '0 0 0 3px #2F3437'
       } else if (decision === 'anonymize') {
-        span.textContent = `<${entity.type}>`
+        const rect = span.getBoundingClientRect()
+        const hasRenderedTag = anonymizedEntityIndexes.has(entityIndex)
+        span.textContent = hasRenderedTag ? '' : `<${entity.type}>`
+        anonymizedEntityIndexes.add(entityIndex)
         span.style.background = '#F1F0ED'
         span.style.color = '#787774'
         span.style.borderRadius = '2px'
         span.style.fontFamily = 'monospace'
-      } else {
-        span.style.background = 'rgba(52, 101, 56, 0.12)'
-        span.style.borderRadius = '2px'
+        span.style.display = 'inline-block'
+        span.style.minWidth = `${Math.max(rect.width, 12)}px`
+        span.style.minHeight = `${Math.max(rect.height, 10)}px`
+        span.style.padding = '0 2px'
       }
     })
   }, [result, reviewState])

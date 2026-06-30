@@ -1,6 +1,12 @@
 import os
-from dotenv import load_dotenv
-load_dotenv("/Users/vivekchitturi/Desktop/fourback/test_agent/.env")
+
+try:
+    from .common.config.env import load_backend_env
+except ImportError:
+    from common.config.env import load_backend_env
+
+load_backend_env()
+
 from google.cloud import dlp_v2
 
 dlp = dlp_v2.DlpServiceClient()

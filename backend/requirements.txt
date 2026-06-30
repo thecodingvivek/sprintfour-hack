@@ -71,4 +71,6 @@ watchdog==6.0.0
 watchfiles==1.2.0
 websockets==15.0.1
 PyMuPDF
+presidio-analyzer
+presidio-anonymizer
 google-cloud-dlp

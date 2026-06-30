@@ -8,13 +8,22 @@ _runners: dict[str, Runner] = {}
 def _get_agent(app_name: str):
     """Lazily import and return the appropriate agent for the given app_name."""
     if app_name == "pii_explainer":
-        from agents.pii_explainer.agent import root_agent
+        try:
+            from ...agents.pii_explainer.agent import root_agent
+        except ImportError:
+            from agents.pii_explainer.agent import root_agent
         return root_agent
     elif app_name == "policy_generator":
-        from agents.policy_generator.agent import root_agent
+        try:
+            from ...agents.policy_generator.agent import root_agent
+        except ImportError:
+            from agents.policy_generator.agent import root_agent
         return root_agent
     elif app_name == "privacy_auditor":
-        from agents.privacy_auditor.agent import root_agent
+        try:
+            from ...agents.privacy_auditor.agent import root_agent
+        except ImportError:
+            from agents.privacy_auditor.agent import root_agent
         return root_agent
     else:
         raise ValueError(f"Unknown agent: {app_name}")

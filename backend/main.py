@@ -1,12 +1,17 @@
-import os
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pii_route import router as pii_router
 
-# Load environment variables
-dotenv_path = os.path.join(os.path.dirname(__file__), "test_agent", ".env")
-load_dotenv(dotenv_path)
+try:
+    from .common.config.env import load_backend_env
+except ImportError:
+    from common.config.env import load_backend_env
+
+load_backend_env()
+
+try:
+    from .pii_route import router as pii_router
+except ImportError:
+    from pii_route import router as pii_router
 
 app = FastAPI(
     title="Conseal - Trust & Explainability",

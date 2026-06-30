@@ -1,15 +1,21 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from pii.analyzer import analyzer
-from pii.anonymizer import anonymizer
-from common.config.adk import get_runner
 from google.genai import types
 from presidio_analyzer import RecognizerResult
 from typing import List, Optional
 import uuid
 import json
 import io
+
+try:
+    from .pii.analyzer import analyzer
+    from .pii.anonymizer import anonymizer
+    from .common.config.adk import get_runner
+except ImportError:
+    from pii.analyzer import analyzer
+    from pii.anonymizer import anonymizer
+    from common.config.adk import get_runner
 
 router = APIRouter()
 
