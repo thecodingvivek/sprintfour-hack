@@ -33,6 +33,10 @@ class PolicyResponse(BaseModel):
     purpose: str
     policy: PrivacyPolicy
 
+class RefinePolicyRequest(BaseModel):
+    current_policy: PrivacyPolicy
+    user_prompt: str
+
 class PIIRequest(BaseModel):
     text: str
     purpose: Optional[str] = None
@@ -112,6 +116,46 @@ async def _generate_policy(purpose: str) -> dict:
         return json.loads(cleaned)
     except (json.JSONDecodeError, ValueError):
         return {"purpose": purpose, "policy": {"hide": [], "keep": [], "review": []}}
+
+
+async def _refine_policy(current_policy: dict, user_prompt: str) -> dict:
+    runner = get_runner("policy_generator")
+    session = await runner.session_service.create_session(
+        app_name="policy_generator",
+        user_id="anonymous",
+        session_id=str(uuid.uuid4()),
+    )
+    
+    prompt = (
+        f"Here is the current policy:\n{json.dumps(current_policy, indent=2)}\n\n"
+        f"The user wants to modify it based on this instruction: {user_prompt}\n\n"
+        f"Please generate the updated policy."
+    )
+    
+    new_message = types.Content(
+        role="user",
+        parts=[types.Part(text=prompt)],
+    )
+    response_text = ""
+    async for event in runner.run_async(
+        user_id="anonymous",
+        session_id=session.id,
+        new_message=new_message,
+    ):
+        if event.content and event.content.parts:
+            for part in event.content.parts:
+                if part.text:
+                    response_text += part.text
+
+    try:
+        cleaned = response_text.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            cleaned = "\n".join(lines)
+        return json.loads(cleaned)
+    except (json.JSONDecodeError, ValueError):
+        return {"purpose": "Refined Policy", "policy": current_policy}
 
 
 async def _run_privacy_audit(redacted_text: str, policy: Optional[dict] = None) -> dict:
@@ -367,6 +411,14 @@ async def run_audit(request: AuditRequest):
 async def generate_policy(request: PolicyRequest):
     """Generate a privacy policy based on a given purpose."""
     result = await _generate_policy(request.purpose)
+    return PolicyResponse(**result)
+
+
+@router.post("/policy/refine", response_model=PolicyResponse)
+async def refine_policy(request: RefinePolicyRequest):
+    """Refine an existing privacy policy based on user instructions."""
+    policy_dict = request.current_policy.model_dump()
+    result = await _refine_policy(policy_dict, request.user_prompt)
     return PolicyResponse(**result)
 
 
