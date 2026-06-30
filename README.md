@@ -11,6 +11,8 @@
   <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/Gemini-8E75C2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Gemini" /></a>
 </p>
 
+ [Demo Video](https://drive.google.com/file/d/1M7V_TaaKBA7-18Oejo9RCT9UAyoKwhB0/view?usp=drive_link)
+
 ## Overview
 
 Conseal is an explainable document anonymization platform designed to help users safely share documents with external AI tools without exposing sensitive information.
