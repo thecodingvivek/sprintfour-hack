@@ -107,6 +107,7 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
   const [exporting, setExporting] = useState(false)
   const [auditing, setAuditing] = useState(false)
   const [auditResult, setAuditResult] = useState(null)
+  const [hoveredEntity, setHoveredEntity] = useState(null)
 
   const [purpose, setPurpose] = useState('')
   const [policy, setPolicy] = useState(null)
@@ -189,6 +190,10 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
       ...prev,
       [entityIndex]: { decision: newDecision, modified: true },
     }))
+    const el = document.getElementById('preview')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
   }, [])
 
   const handleExportPdf = useCallback(async () => {
@@ -262,10 +267,10 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
 
   const navItems = [
     { id: 'overview', label: 'Overview' },
+    { id: 'audit', label: 'Audit' },
     { id: 'preview', label: 'Preview' },
     { id: 'explanations', label: 'Explanations' },
     { id: 'kept', label: 'Kept Items' },
-    { id: 'audit', label: 'Audit' },
     { id: 'actions', label: 'Actions' },
   ]
 
@@ -356,11 +361,14 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
 
       const decision = reviewState[entityIndex]?.decision || 'redact'
       if (decision === 'redact') {
-        span.style.setProperty('color', 'transparent', 'important')
+        const rect = span.getBoundingClientRect()
+        span.textContent = ''
         span.style.background = '#2F3437'
         span.style.borderRadius = '2px'
         span.style.display = 'inline-block'
         span.style.userSelect = 'none'
+        span.style.minWidth = `${Math.max(rect.width, 12)}px`
+        span.style.minHeight = `${Math.max(rect.height, 10)}px`
         span.style.boxShadow = '0 0 0 3px #2F3437'
       } else if (decision === 'anonymize') {
         const rect = span.getBoundingClientRect()
@@ -376,6 +384,30 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
         span.style.minHeight = `${Math.max(rect.height, 10)}px`
         span.style.padding = '0 2px'
       }
+
+      if (decision === 'redact' || decision === 'anonymize') {
+        span.style.cursor = 'pointer'
+        span.onmouseenter = () => {
+          const rect = span.getBoundingClientRect()
+          setHoveredEntity({ entity, index: entityIndex, rect })
+        }
+        span.onmouseleave = () => {
+          setHoveredEntity(null)
+        }
+        span.onclick = () => {
+          const el = document.getElementById(`explanation-${entityIndex}`)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.classList.add('ring-2', 'ring-[#2F3437]', 'ring-offset-2')
+            setTimeout(() => el.classList.remove('ring-2', 'ring-[#2F3437]', 'ring-offset-2'), 1500)
+          }
+        }
+      } else {
+        span.style.cursor = ''
+        span.onmouseenter = null
+        span.onmouseleave = null
+        span.onclick = null
+      }
     })
   }, [result, reviewState])
 
@@ -386,11 +418,11 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-1 md:grid-cols-[7rem_1fr_18rem] gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(auto,800px)_1fr] gap-8 max-w-[1600px] mx-auto">
         {/* Left nav column */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex justify-end items-start">
           {result && (
-            <nav className="sticky top-6">
+            <nav className="sticky top-6 w-[10rem]">
               <div className="space-y-1">
                 {navItems.map((item) => (
                   <button
@@ -558,6 +590,39 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
       {/* Analysis Results */}
       {result && (
         <>
+          {/* Hover Popup */}
+          {hoveredEntity && (
+            <div 
+              className="fixed z-[100] w-64 rounded-lg border border-[#EAEAEA] bg-white p-3 shadow-lg pointer-events-none"
+              style={{ 
+                top: hoveredEntity.rect.bottom + 4,
+                left: hoveredEntity.rect.left 
+              }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-[#2F3437] truncate">{hoveredEntity.entity.value}</span>
+                <Badge variant="outline" className={`rounded-full border-0 text-[9px] font-medium uppercase tracking-wider shrink-0 ${getTypeColor(hoveredEntity.entity.type)}`}>
+                  {hoveredEntity.entity.type}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className={`rounded-full border-0 text-[9px] font-medium uppercase tracking-wider ${riskColors[hoveredEntity.entity.risk_level] || ''}`}>
+                  {hoveredEntity.entity.risk_level}
+                </Badge>
+                <Badge variant="outline" className={`rounded-full text-[9px] font-medium uppercase tracking-wider ${
+                  (reviewState[hoveredEntity.index]?.decision || 'redact') === 'redact'
+                    ? 'border-[#FDEBEC] bg-[#FDEBEC] text-[#9F2F2D]'
+                    : (reviewState[hoveredEntity.index]?.decision || 'redact') === 'anonymize'
+                      ? 'border-[#E8E6E1] bg-[#F1F0ED] text-[#787774]'
+                      : 'border-[#EDF3EC] bg-[#EDF3EC] text-[#346538]'
+                }`}>
+                  {(reviewState[hoveredEntity.index]?.decision || 'redact') === 'redact' ? 'Redact' : (reviewState[hoveredEntity.index]?.decision || 'redact') === 'anonymize' ? 'Anonymize' : 'Keep'}
+                </Badge>
+              </div>
+              <p className="mt-2 text-xs text-[#787774] line-clamp-3">{hoveredEntity.entity.explanation}</p>
+            </div>
+          )}
+
           {/* Risk Summary */}
           <Card id="overview" className="scroll-mt-24 border-[#EAEAEA] shadow-none">
             <CardHeader>
@@ -579,9 +644,63 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
             </CardHeader>
           </Card>
 
-          {/* PDF Preview + Entities */}
-          <div id="preview" className="scroll-mt-24 grid gap-6 md:grid-cols-[1fr_320px]">
-            {/* PDF Preview */}
+          {/* Privacy Audit */}
+          <Card id="audit" className="scroll-mt-24 border-[#EAEAEA] shadow-none">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-[#787774]" />
+                <CardTitle className="font-heading text-base tracking-tight">LLM AS JUDGE</CardTitle>
+              </div>
+              <CardDescription>Check with one more agent which checks for senstive pii.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!auditResult ? (
+                <Button onClick={handleAudit} disabled={auditing} variant="outline" className="border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F0ED]">
+                  {auditing ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+                  {auditing ? 'Running audit...' : 'Run Privacy Audit'}
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="secondary" className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
+                      auditResult.status === 'PASS' ? 'bg-[#EDF3EC] text-[#346538]' : 'bg-[#FBF3DB] text-[#956400]'
+                    }`}>
+                      {auditResult.status}
+                    </Badge>
+                    <Badge variant="secondary" className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
+                      auditResult.residual_risk === 'LOW' ? 'bg-[#EDF3EC] text-[#346538]'
+                      : auditResult.residual_risk === 'MEDIUM' ? 'bg-[#FBF3DB] text-[#956400]'
+                      : 'bg-[#FDEBEC] text-[#9F2F2D]'
+                    }`}>
+                      Residual Risk: {auditResult.residual_risk}
+                    </Badge>
+                  </div>
+                  {auditResult.result_summary && (
+                    <p className="text-sm text-[#787774] leading-relaxed">{auditResult.result_summary}</p>
+                  )}
+                  {auditResult.remaining_identifiers?.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-wider text-[#B0AEAA]">Remaining Identifiers</p>
+                      {auditResult.remaining_identifiers.map((item, i) => (
+                        <div key={i} className="rounded-lg border border-[#EAEAEA] bg-white p-3">
+                          <p className="text-sm font-medium text-[#2F3437]">{item.value}</p>
+                          <p className="text-xs text-[#787774] mt-1">{item.reason}</p>
+                          {item.recommendation && <p className="text-xs text-[#9F2F2D] mt-1">{item.recommendation}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button onClick={handleAudit} disabled={auditing} variant="ghost" size="sm" className="text-[#787774] hover:text-[#2F3437]">
+                    {auditing ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                    Re-run
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* PDF Preview */}
+          <div id="preview" className="scroll-mt-24">
             <Card className="border-[#EAEAEA] shadow-none">
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -594,6 +713,7 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
                   <Document
                     file={file}
                     onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                    className="flex flex-col items-center bg-[#FAFAF9] p-4"
                     loading={
                       <div className="flex items-center justify-center p-12">
                         <Loader2 className="size-6 animate-spin text-[#B0AEAA]" />
@@ -605,77 +725,19 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
                         key={i}
                         pageNumber={i + 1}
                         width={600}
+                        className="mb-4 shadow-sm"
                         onRenderTextLayerSuccess={handleTextLayerRenderSuccess}
                       />
                     ))}
                   </Document>
                 </div>
                 {numPages && (
-                  <p className="mt-2 text-xs text-[#B0AEAA]">{numPages} page{numPages > 1 ? 's' : ''}</p>
+                  <p className="mt-2 text-center text-xs text-[#B0AEAA]">{numPages} page{numPages > 1 ? 's' : ''}</p>
                 )}
               </CardContent>
             </Card>
 
-            {/* Entities Sidebar */}
-            <Card className="border-[#EAEAEA] shadow-none">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Info className="size-4 text-[#787774]" />
-                  <CardTitle className="font-heading text-sm tracking-tight">
-                    Entities ({result.entities?.length || 0})
-                  </CardTitle>
-                </div>
-                <CardDescription>
-                  {decisionCounts.redact} redact, {decisionCounts.anonymize} anonymize — {decisionCounts.keep} kept
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px] pr-2">
-                  <div className="space-y-2">
-                    {(result.entities || []).map((entity, i) => {
-                      const review = reviewState[i] || { decision: 'redact', modified: false }
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setSelectedEntity({ ...entity, index: i })}
-                          className={`w-full rounded-lg border p-3 text-left transition-all hover:border-[#D0CEC9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
-                            review.decision === 'redact'
-                              ? 'border-[#FDEBEC] bg-[#FFF8F8]'
-                              : review.decision === 'anonymize'
-                                ? 'border-[#E8E6E1] bg-[#FAFAF9]'
-                                : 'border-[#EDF3EC] bg-[#F8FBF8]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-[#2F3437] truncate">{entity.value}</span>
-                            <Badge variant="outline" className={`rounded-full border-0 text-[9px] font-medium uppercase tracking-wider shrink-0 ${getTypeColor(entity.type)}`}>
-                              {entity.type}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className={`rounded-full border-0 text-[9px] font-medium uppercase tracking-wider ${riskColors[entity.risk_level] || ''}`}>
-                              {entity.risk_level}
-                            </Badge>
-                            <Badge variant="outline" className={`rounded-full text-[9px] font-medium uppercase tracking-wider ${
-                              review.decision === 'redact'
-                                ? 'border-[#FDEBEC] bg-[#FDEBEC] text-[#9F2F2D]'
-                                : review.decision === 'anonymize'
-                                  ? 'border-[#E8E6E1] bg-[#F1F0ED] text-[#787774]'
-                                  : 'border-[#EDF3EC] bg-[#EDF3EC] text-[#346538]'
-                            }`}>
-                              {review.decision === 'redact' ? 'Redact' : review.decision === 'anonymize' ? 'Anonymize' : 'Keep'}
-                            </Badge>
-                            {review.modified && (
-                              <span className="text-[9px] text-[#956400] font-medium">(modified)</span>
-                            )}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+
           </div>
 
           {/* Entity Explanations */}
@@ -690,7 +752,7 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
                   {(result.entities || []).map((entity, i) => {
                     const review = reviewState[i] || { decision: 'redact', modified: false }
                     return (
-                      <div key={i} className="rounded-lg border border-[#EAEAEA] bg-white p-4">
+                      <div id={`explanation-${i}`} key={i} className="rounded-lg border border-[#EAEAEA] bg-white p-4 transition-all duration-300">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -771,60 +833,7 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
             </Card>
           )}
 
-          {/* Privacy Audit */}
-          <Card id="audit" className="scroll-mt-24 border-[#EAEAEA] shadow-none">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-[#787774]" />
-                <CardTitle className="font-heading text-base tracking-tight">Privacy Audit</CardTitle>
-              </div>
-              <CardDescription>Run an independent check on the redacted text to find any remaining identifiers.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!auditResult ? (
-                <Button onClick={handleAudit} disabled={auditing} variant="outline" className="border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F0ED]">
-                  {auditing ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
-                  {auditing ? 'Running audit...' : 'Run Privacy Audit'}
-                </Button>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
-                      auditResult.status === 'PASS' ? 'bg-[#EDF3EC] text-[#346538]' : 'bg-[#FBF3DB] text-[#956400]'
-                    }`}>
-                      {auditResult.status}
-                    </Badge>
-                    <Badge variant="secondary" className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
-                      auditResult.residual_risk === 'LOW' ? 'bg-[#EDF3EC] text-[#346538]'
-                      : auditResult.residual_risk === 'MEDIUM' ? 'bg-[#FBF3DB] text-[#956400]'
-                      : 'bg-[#FDEBEC] text-[#9F2F2D]'
-                    }`}>
-                      Residual Risk: {auditResult.residual_risk}
-                    </Badge>
-                  </div>
-                  {auditResult.result_summary && (
-                    <p className="text-sm text-[#787774] leading-relaxed">{auditResult.result_summary}</p>
-                  )}
-                  {auditResult.remaining_identifiers?.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium uppercase tracking-wider text-[#B0AEAA]">Remaining Identifiers</p>
-                      {auditResult.remaining_identifiers.map((item, i) => (
-                        <div key={i} className="rounded-lg border border-[#EAEAEA] bg-white p-3">
-                          <p className="text-sm font-medium text-[#2F3437]">{item.value}</p>
-                          <p className="text-xs text-[#787774] mt-1">{item.reason}</p>
-                          {item.recommendation && <p className="text-xs text-[#9F2F2D] mt-1">{item.recommendation}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <Button onClick={handleAudit} disabled={auditing} variant="ghost" size="sm" className="text-[#787774] hover:text-[#2F3437]">
-                    {auditing ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-                    Re-run
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
 
           {/* Actions */}
           <div id="actions" className="scroll-mt-24 flex items-center justify-center gap-4 pb-8">
@@ -846,7 +855,7 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
         </div>
 
         {/* Right policy column */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex justify-end items-start">
           <AnimatePresence>
             {policy && (
               <motion.div
@@ -854,7 +863,7 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
-                className="sticky top-6"
+                className="sticky top-6 w-[18rem]"
               >
                 <div className="rounded-lg border border-[#EAEAEA] bg-white p-4 flex flex-col space-y-3">
                   <div className="flex items-center justify-between shrink-0">

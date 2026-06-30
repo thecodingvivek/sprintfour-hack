@@ -266,11 +266,11 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
 
   const navItems = [
     { id: 'overview', label: 'Overview' },
+    { id: 'audit', label: 'Audit' },
     { id: 'entities', label: 'Entities' },
     { id: 'comparison', label: 'Comparison' },
     { id: 'explanations', label: 'Explanations' },
     { id: 'kept', label: 'Kept Items' },
-    { id: 'audit', label: 'Audit' },
     { id: 'actions', label: 'Actions' },
   ]
   const scrollToSection = (id) => {
@@ -299,11 +299,11 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-1 md:grid-cols-[7rem_1fr_18rem] gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(auto,800px)_1fr] gap-8 max-w-[1600px] mx-auto">
         {/* Left nav column */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex justify-end items-start">
           {result && (
-            <nav className="sticky top-6">
+            <nav className="sticky top-6 w-[10rem]">
               <div className="space-y-1">
                 {navItems.map((item) => (
                   <button
@@ -484,6 +484,105 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
                 </CardDescription>
               )}
             </CardHeader>
+          </Card>
+
+          {/* Privacy Audit */}
+          <Card id="audit" className="scroll-mt-24 border-[#EAEAEA] shadow-none">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-[#787774]" />
+                <CardTitle className="font-heading text-base tracking-tight">
+                  Privacy Audit
+                </CardTitle>
+              </div>
+              <CardDescription>
+                Run an independent check on the redacted text to find any remaining identifiers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!auditResult ? (
+                <Button
+                  onClick={handleAudit}
+                  disabled={auditing}
+                  variant="outline"
+                  className="border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F0ED]"
+                >
+                  {auditing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="size-4" />
+                  )}
+                  {auditing ? 'Running audit...' : 'Run Privacy Audit'}
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant="secondary"
+                      className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
+                        auditResult.status === 'PASS'
+                          ? 'bg-[#EDF3EC] text-[#346538]'
+                          : 'bg-[#FBF3DB] text-[#956400]'
+                      }`}
+                    >
+                      {auditResult.status}
+                    </Badge>
+                    <Badge
+                      variant="secondary"
+                      className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
+                        auditResult.residual_risk === 'LOW'
+                          ? 'bg-[#EDF3EC] text-[#346538]'
+                          : auditResult.residual_risk === 'MEDIUM'
+                            ? 'bg-[#FBF3DB] text-[#956400]'
+                            : 'bg-[#FDEBEC] text-[#9F2F2D]'
+                      }`}
+                    >
+                      Residual Risk: {auditResult.residual_risk}
+                    </Badge>
+                  </div>
+
+                  {auditResult.result_summary && (
+                    <p className="text-sm text-[#787774] leading-relaxed">
+                      {auditResult.result_summary}
+                    </p>
+                  )}
+
+                  {auditResult.remaining_identifiers && auditResult.remaining_identifiers.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-wider text-[#B0AEAA]">
+                        Remaining Identifiers — {auditResult.remaining_identifiers.length}
+                      </p>
+                      {auditResult.remaining_identifiers.map((item, i) => (
+                        <div key={i} className="rounded-lg border border-[#EAEAEA] bg-white p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium text-[#2F3437]">{item.value}</span>
+                          </div>
+                          <p className="text-xs text-[#787774]">{item.reason}</p>
+                          {item.recommendation && (
+                            <p className="mt-1 text-xs text-[#9F2F2D]">{item.recommendation}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleAudit}
+                    disabled={auditing}
+                    variant="ghost"
+                    size="sm"
+                    className="text-[#787774] hover:text-[#2F3437]"
+                  >
+                    {auditing ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="size-3.5" />
+                    )}
+                    Re-run
+                  </Button>
+                </div>
+              )}
+            </CardContent>
           </Card>
 
           {/* Entity Summary */}
@@ -667,104 +766,7 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
             </Card>
           )}
 
-          {/* Privacy Audit */}
-          <Card id="audit" className="scroll-mt-24 border-[#EAEAEA] shadow-none">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-[#787774]" />
-                <CardTitle className="font-heading text-base tracking-tight">
-                  Privacy Audit
-                </CardTitle>
-              </div>
-              <CardDescription>
-                Run an independent check on the redacted text to find any remaining identifiers.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!auditResult ? (
-                <Button
-                  onClick={handleAudit}
-                  disabled={auditing}
-                  variant="outline"
-                  className="border-[#EAEAEA] text-[#2F3437] hover:bg-[#F1F0ED]"
-                >
-                  {auditing ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <ShieldCheck className="size-4" />
-                  )}
-                  {auditing ? 'Running audit...' : 'Run Privacy Audit'}
-                </Button>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="secondary"
-                      className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
-                        auditResult.status === 'PASS'
-                          ? 'bg-[#EDF3EC] text-[#346538]'
-                          : 'bg-[#FBF3DB] text-[#956400]'
-                      }`}
-                    >
-                      {auditResult.status}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className={`rounded-full text-[11px] font-medium uppercase tracking-wider ${
-                        auditResult.residual_risk === 'LOW'
-                          ? 'bg-[#EDF3EC] text-[#346538]'
-                          : auditResult.residual_risk === 'MEDIUM'
-                            ? 'bg-[#FBF3DB] text-[#956400]'
-                            : 'bg-[#FDEBEC] text-[#9F2F2D]'
-                      }`}
-                    >
-                      Residual Risk: {auditResult.residual_risk}
-                    </Badge>
-                  </div>
 
-                  {auditResult.result_summary && (
-                    <p className="text-sm text-[#787774] leading-relaxed">
-                      {auditResult.result_summary}
-                    </p>
-                  )}
-
-                  {auditResult.remaining_identifiers && auditResult.remaining_identifiers.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium uppercase tracking-wider text-[#B0AEAA]">
-                        Remaining Identifiers — {auditResult.remaining_identifiers.length}
-                      </p>
-                      {auditResult.remaining_identifiers.map((item, i) => (
-                        <div key={i} className="rounded-lg border border-[#EAEAEA] bg-white p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-[#2F3437]">{item.value}</span>
-                          </div>
-                          <p className="text-xs text-[#787774]">{item.reason}</p>
-                          {item.recommendation && (
-                            <p className="mt-1 text-xs text-[#9F2F2D]">{item.recommendation}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleAudit}
-                    disabled={auditing}
-                    variant="ghost"
-                    size="sm"
-                    className="text-[#787774] hover:text-[#2F3437]"
-                  >
-                    {auditing ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <RotateCcw className="size-3.5" />
-                    )}
-                    Re-run
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Actions */}
           <div id="actions" className="scroll-mt-24 flex items-center justify-center gap-4 pb-8">
@@ -795,7 +797,7 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
         </div>
 
         {/* Right policy column */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex justify-end items-start">
           <AnimatePresence>
             {policy && (
               <motion.div
@@ -803,7 +805,7 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
-                className="sticky top-6"
+                className="sticky top-6 w-[18rem]"
               >
                 <div className="rounded-lg border border-[#EAEAEA] bg-white p-4 flex flex-col space-y-3">
                   <div className="flex items-center justify-between shrink-0">
