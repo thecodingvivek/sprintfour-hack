@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
-import { uploadPdf, exportPdf, generatePolicy, auditRedactedText } from '@/lib/api'
+import { uploadPdf, exportPdf, generatePolicy, auditRedactedText, refinePolicy } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -204,6 +204,8 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
   const [policy, setPolicy] = useState(null)
   const [activePolicyTab, setActivePolicyTab] = useState('hide')
   const [generatingPolicy, setGeneratingPolicy] = useState(false)
+  const [refiningPolicy, setRefiningPolicy] = useState(false)
+  const [refinePrompt, setRefinePrompt] = useState('')
   const [policyGeneratedFor, setPolicyGeneratedFor] = useState('')
 
   const [reviewState, setReviewState] = useState({})
@@ -221,6 +223,20 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
       setGeneratingPolicy(false)
     }
   }, [purpose])
+
+  const handleRefinePolicy = useCallback(async () => {
+    if (!refinePrompt.trim() || !policy) return
+    setRefiningPolicy(true)
+    try {
+      const data = await refinePolicy(policy, refinePrompt)
+      setPolicy(data.policy)
+      setRefinePrompt('')
+    } catch (err) {
+      setError('Policy refinement failed: ' + err.message)
+    } finally {
+      setRefiningPolicy(false)
+    }
+  }, [refinePrompt, policy])
 
   const handleRemovePolicy = useCallback(() => {
     setPolicy(null)
@@ -1035,8 +1051,35 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
                   </div>
 
                   {/* Active section */}
-                  <div className="flex-1 overflow-y-auto min-h-0">
+                  <div className="flex-1 overflow-y-auto min-h-0 pb-2">
                     <PolicySection type={activePolicyTab} items={policy[activePolicyTab] || []} />
+                  </div>
+
+                  {/* Refine Policy Input */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-[#EAEAEA] shrink-0">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={refinePrompt}
+                        onChange={(e) => setRefinePrompt(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleRefinePolicy()}
+                        placeholder="Refine policy (e.g. keep names)"
+                        className="w-full rounded-md border border-[#EAEAEA] bg-[#F1F0ED]/50 px-3 py-1.5 pr-8 text-xs text-[#2F3437] placeholder:text-[#B0AEAA] focus:border-[#2F3437] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2F3437] transition-all"
+                        disabled={refiningPolicy}
+                      />
+                      <Button
+                        onClick={handleRefinePolicy}
+                        disabled={!refinePrompt.trim() || refiningPolicy}
+                        className="absolute right-1 top-1 h-6 w-6 rounded-sm bg-transparent p-0 text-[#787774] hover:bg-[#F1F0ED] hover:text-[#2F3437]"
+                        variant="ghost"
+                      >
+                        {refiningPolicy ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="size-3" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

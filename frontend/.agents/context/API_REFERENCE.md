@@ -42,6 +42,40 @@ Generate a privacy policy based on a given purpose (e.g., "Resume Review", "Cont
 
 ---
 
+## 1.1 `POST /pii/policy/refine` (NEW)
+
+Refine an existing privacy policy based on a user instruction.
+
+### Request
+
+**Content-Type:** `application/json`
+
+```json
+{
+  "current_policy": {
+    "hide": ["string"],
+    "keep": ["string"],
+    "review": ["string"]
+  },
+  "user_prompt": "string (required)"
+}
+```
+
+### Response `200 OK`
+
+```json
+{
+  "purpose": "string",
+  "policy": {
+    "hide": ["string"],
+    "keep": ["string"],
+    "review": ["string"]
+  }
+}
+```
+
+---
+
 ## 2. `POST /pii/anonymize`
 
 Analyze text for PII, explain every redaction decision, and return anonymized text.

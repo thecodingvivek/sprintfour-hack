@@ -13,6 +13,19 @@ export async function generatePolicy(purpose) {
   return res.json();
 }
 
+export async function refinePolicy(current_policy, user_prompt) {
+  const res = await fetch(`${API_BASE}/pii/policy/refine`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_policy, user_prompt }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.message || 'Policy refinement failed');
+  }
+  return res.json();
+}
+
 export async function analyzeText(text, { purpose, policy } = {}) {
   const body = { text };
   if (purpose) body.purpose = purpose;
