@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 fourhack-5f384-136980915a0a.json
 .adk/
+.agents/DEPLOYMENT_GUIDE.md
+.agents/API_REFERENCE.md
