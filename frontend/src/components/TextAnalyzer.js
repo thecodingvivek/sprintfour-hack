@@ -222,7 +222,7 @@ export default function TextAnalyzer({ activeTab, onTabChange }) {
     if (!result) return
     setExporting(true)
     try {
-      const blob = await exportText(result.original_text)
+      const blob = new Blob([result.anonymized_text], { type: 'text/plain;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

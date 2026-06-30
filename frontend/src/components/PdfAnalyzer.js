@@ -96,6 +96,97 @@ function PolicySection({ type, items }) {
   )
 }
 
+function HighlightedTextForTxt({ text, entities, reviewState, onHover }) {
+  if (!entities || entities.length === 0) {
+    return <span className="whitespace-pre-wrap">{text}</span>
+  }
+
+  const sorted = [...entities]
+    .map((e, idx) => ({ ...e, idx }))
+    .sort((a, b) => a.start - b.start)
+  const parts = []
+  let lastIndex = 0
+
+  for (const entity of sorted) {
+    if (entity.start > lastIndex) {
+      parts.push(
+        <span key={`t-${lastIndex}`}>{text.slice(lastIndex, entity.start)}</span>
+      )
+    }
+
+    const decision = reviewState[entity.idx]?.decision || 'redact'
+    const value = text.slice(entity.start, entity.end)
+
+    const handleMouseEnter = (e) => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      onHover({ entity, index: entity.idx, rect })
+    }
+
+    const handleMouseLeave = () => {
+      onHover(null)
+    }
+
+    const handleClick = () => {
+      const el = document.getElementById(`explanation-${entity.idx}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-2', 'ring-[#2F3437]', 'ring-offset-2')
+        setTimeout(() => el.classList.remove('ring-2', 'ring-[#2F3437]', 'ring-offset-2'), 1500)
+      }
+    }
+
+    if (decision === 'redact') {
+      parts.push(
+        <span
+          key={`e-${entity.idx}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          className="inline-block bg-[#2F3437] rounded-sm cursor-pointer select-none mx-0.5"
+          style={{
+            width: `${Math.max(value.length * 8, 12)}px`,
+            height: '1.2em',
+            verticalAlign: 'middle',
+            boxShadow: '0 0 0 2px #2F3437'
+          }}
+        />
+      )
+    } else if (decision === 'anonymize') {
+      parts.push(
+        <span
+          key={`e-${entity.idx}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          className="inline-flex items-center rounded-sm bg-[#F1F0ED] px-1 font-mono text-xs text-[#787774] cursor-pointer mx-0.5 border border-[#E8E6E1]"
+        >
+          &lt;{entity.type}&gt;
+        </span>
+      )
+    } else {
+      parts.push(
+        <span
+          key={`e-${entity.idx}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          className={`inline-flex items-center rounded-sm px-1 text-xs cursor-pointer mx-0.5 border hover:opacity-85 ${getTypeColor(entity.type)}`}
+        >
+          {value}
+        </span>
+      )
+    }
+
+    lastIndex = entity.end
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(<span key={`t-${lastIndex}`}>{text.slice(lastIndex)}</span>)
+  }
+
+  return <span className="whitespace-pre-wrap">{parts}</span>
+}
+
 export default function PdfAnalyzer({ activeTab, onTabChange }) {
   const fileRef = useRef(null)
   const [file, setFile] = useState(null)
@@ -200,23 +291,52 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
     if (!file || !result) return
     setExporting(true)
     try {
-      const redactions = (result.entities || []).reduce((acc, e, i) => {
-        const decision = reviewState[i]?.decision
-        if (decision === 'redact') acc.push({ value: e.value, type: e.type, action: 'redact' })
-        else if (decision === 'anonymize') acc.push({ value: e.value, type: e.type, action: 'anonymize' })
-        return acc
-      }, [])
-      const blob = await exportPdf(file, redactions)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'redacted_document.pdf'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      const isTxt = file.name.endsWith('.txt') || file.type === 'text/plain'
+      if (isTxt) {
+        let text = result.original_text || ''
+        const sortedEntities = [...(result.entities || [])]
+          .map((e, idx) => ({ ...e, idx }))
+          .sort((a, b) => b.start - a.start)
+
+        for (const e of sortedEntities) {
+          const decision = reviewState[e.idx]?.decision || 'redact'
+          let replacement = e.value
+          if (decision === 'redact') {
+            replacement = '█'.repeat(e.value.length)
+          } else if (decision === 'anonymize') {
+            replacement = `<${e.type}>`
+          }
+          text = text.slice(0, e.start) + replacement + text.slice(e.end)
+        }
+
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name.replace(/\.[^/.]+$/, "") + '_redacted.txt'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        const redactions = (result.entities || []).reduce((acc, e, i) => {
+          const decision = reviewState[i]?.decision
+          if (decision === 'redact') acc.push({ value: e.value, type: e.type, action: 'redact' })
+          else if (decision === 'anonymize') acc.push({ value: e.value, type: e.type, action: 'anonymize' })
+          return acc
+        }, [])
+        const blob = await exportPdf(file, redactions)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'redacted_document.pdf'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
     } catch (err) {
-      setError('PDF export failed: ' + err.message)
+      setError((file.name.endsWith('.txt') ? 'Text' : 'PDF') + ' export failed: ' + err.message)
     } finally {
       setExporting(false)
     }
@@ -309,6 +429,8 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
 
   const applyHighlights = useCallback(() => {
     if (!result || !previewRef.current) return
+    const isTxt = file?.name.endsWith('.txt') || file?.type === 'text/plain'
+    if (isTxt) return
     const entities = result.entities || []
 
     const spans = previewRef.current.querySelectorAll(
@@ -710,28 +832,39 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
               </CardHeader>
               <CardContent>
                 <div ref={previewRef} className="overflow-auto rounded-lg border border-[#EAEAEA] bg-white">
-                  <Document
-                    file={file}
-                    onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-                    className="flex flex-col items-center bg-[#FAFAF9] p-4"
-                    loading={
-                      <div className="flex items-center justify-center p-12">
-                        <Loader2 className="size-6 animate-spin text-[#B0AEAA]" />
-                      </div>
-                    }
-                  >
-                    {Array.from({ length: numPages || 1 }, (_, i) => (
-                      <Page
-                        key={i}
-                        pageNumber={i + 1}
-                        width={600}
-                        className="mb-4 shadow-sm"
-                        onRenderTextLayerSuccess={handleTextLayerRenderSuccess}
+                  {file?.name.endsWith('.txt') || file?.type === 'text/plain' ? (
+                    <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[#2F3437] p-6 bg-[#FAFAF9]">
+                      <HighlightedTextForTxt
+                        text={result?.original_text}
+                        entities={result?.entities}
+                        reviewState={reviewState}
+                        onHover={setHoveredEntity}
                       />
-                    ))}
-                  </Document>
+                    </div>
+                  ) : (
+                    <Document
+                      file={file}
+                      onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                      className="flex flex-col items-center bg-[#FAFAF9] p-4"
+                      loading={
+                        <div className="flex items-center justify-center p-12">
+                          <Loader2 className="size-6 animate-spin text-[#B0AEAA]" />
+                        </div>
+                      }
+                    >
+                      {Array.from({ length: numPages || 1 }, (_, i) => (
+                        <Page
+                          key={i}
+                          pageNumber={i + 1}
+                          width={600}
+                          className="mb-4 shadow-sm"
+                          onRenderTextLayerSuccess={handleTextLayerRenderSuccess}
+                        />
+                      ))}
+                    </Document>
+                  )}
                 </div>
-                {numPages && (
+                {numPages && !(file?.name.endsWith('.txt') || file?.type === 'text/plain') && (
                   <p className="mt-2 text-center text-xs text-[#B0AEAA]">{numPages} page{numPages > 1 ? 's' : ''}</p>
                 )}
               </CardContent>
@@ -843,7 +976,12 @@ export default function PdfAnalyzer({ activeTab, onTabChange }) {
               className="bg-[#111111] text-white hover:bg-[#333333]"
             >
               {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-              {exporting ? 'Exporting...' : `Download Redacted PDF${policy ? ' with Policy' : ''}`}
+              {exporting
+                ? 'Exporting...'
+                : file?.name.endsWith('.txt') || file?.type === 'text/plain'
+                ? `Download Redacted Text${policy ? ' with Policy' : ''}`
+                : `Download Redacted PDF${policy ? ' with Policy' : ''}`
+              }
             </Button>
             <Button onClick={handleReset} variant="ghost" className="text-[#787774] hover:text-[#2F3437]">
               <RotateCcw className="size-4" />
