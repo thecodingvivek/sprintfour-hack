@@ -69,34 +69,11 @@ This ensures the AI keeps information that is useful while removing information 
 
 # Solution Architecture
 
-```text
-                 Upload PDF
-                      │
-                      ▼
-          Select AI Purpose
-                      │
-                      ▼
-         Policy Generation Agent
-                      │
-                      ▼
-            Privacy Strategy
-                      │
-                      ▼
-      Microsoft Presidio Detection
-                      │
-                      ▼
-        LLM Context Review Agent
-                      │
-                      ▼
-        Explainable Redaction
-                      │
-                      ▼
-        Interactive PDF Review
-                      │
-         ┌────────────┴────────────┐
-         ▼                         ▼
- Privacy Audit (Optional)   Download Redacted PDF
-```
+### Normal Approach
+![Normal Approach](static/normalarch.png)
+
+### My Approach
+![My Approach](static/architechture.png)
 
 ---
 
